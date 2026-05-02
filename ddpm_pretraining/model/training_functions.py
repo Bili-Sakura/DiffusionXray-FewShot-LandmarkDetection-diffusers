@@ -200,7 +200,7 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
                 raw_loss = loss.detach()
                 loss = loss / grad_accumulation
                 loss.backward()
-                epoch_loss += loss.item()
+                epoch_loss += raw_loss.item()
 
                 if ((batch_idx + 1) % grad_accumulation == 0) or (batch_idx + 1 == len(train_dataloader)):
                     torch.nn.utils.clip_grad_value_(pipeline.unet.parameters(), clip_value=1.0)

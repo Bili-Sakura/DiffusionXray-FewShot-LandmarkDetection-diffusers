@@ -31,7 +31,7 @@ class Unet(nn.Module):
         if image_size is None and dim is None:
             raise ValueError("image_size must be provided for the diffusers UNet")
         if image_size is None:
-            warnings.warn("dim is deprecated; use image_size instead", DeprecationWarning, stacklevel=2)
+            warnings.warn("dim is deprecated; use image_size instead", DeprecationWarning, stacklevel=3)
             image_size = dim
         elif dim is not None and dim != image_size:
             raise ValueError("Provide only one of image_size or dim (legacy alias)")
