@@ -220,7 +220,9 @@ if __name__ == "__main__":
             assert os.path.exists(pretrained_path), f"Pretrained model path not found: {pretrained_path}"
 
             if not os.path.isdir(pretrained_path):
-                raise ValueError("DDPM pretrained path must be a diffusers pipeline directory")
+                raise ValueError(
+                    "DDPM pretrained path must be a diffusers pipeline directory (e.g. .../models/last_model)"
+                )
 
             pipeline = XrayDDPMPipeline.from_pretrained(pretrained_path)
             model.unet.load_state_dict(pipeline.unet.state_dict())

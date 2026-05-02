@@ -173,7 +173,7 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
                     _save_noising_process_image(pipeline, x, f"{root_path}/noising_process.png")
 
                 noise = torch.randn_like(x)
-                t = torch.randint(0, pipeline.scheduler.config.num_train_timesteps, (batch_size,), device=device)
+                t = torch.randint(1, pipeline.scheduler.config.num_train_timesteps, (batch_size,), device=device)
                 noisy_images = pipeline.scheduler.add_noise(x, noise, t)
 
                 model_input = prepare_model_input(
