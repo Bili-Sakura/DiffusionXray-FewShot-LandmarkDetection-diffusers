@@ -20,6 +20,11 @@ class Unet(nn.Module):
         att_heads=4,
         base_channels=None,
     ):
+        """
+        Args:
+            image_size: Spatial size of the input images (legacy alias: dim).
+            base_channels: Base channel width used to derive UNet block_out_channels.
+        """
         super().__init__()
         if image_size is None:
             image_size = dim

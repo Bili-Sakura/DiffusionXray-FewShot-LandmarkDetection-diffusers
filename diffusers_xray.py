@@ -92,13 +92,20 @@ def build_unet(
 
 
 def prepare_model_input(sample: torch.Tensor, self_condition: bool, in_channels: int) -> torch.Tensor:
-    if self_condition and sample.shape[1] == in_channels - 1:
-        zeros = torch.zeros(
-            (sample.shape[0], 1, sample.shape[2], sample.shape[3]),
-            device=sample.device,
-            dtype=sample.dtype,
-        )
-        return torch.cat([zeros, sample], dim=1)
+    if self_condition:
+        if sample.shape[1] == in_channels:
+            return sample
+        if sample.shape[1] == in_channels - 1:
+            zeros = torch.zeros(
+                (sample.shape[0], 1, sample.shape[2], sample.shape[3]),
+                device=sample.device,
+                dtype=sample.dtype,
+            )
+            return torch.cat([zeros, sample], dim=1)
+        raise ValueError(f"Self-conditioned input should have {in_channels - 1} or {in_channels} channels")
+
+    if sample.shape[1] != in_channels:
+        raise ValueError(f"Input should have {in_channels} channels, got {sample.shape[1]}")
     return sample
 
 
