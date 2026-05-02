@@ -190,8 +190,8 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
                 else:
                     raise NotImplementedError()
 
-                loss.backward()
                 loss = loss / grad_accumulation
+                loss.backward()
                 epoch_loss += loss.item()
 
                 if ((batch_idx + 1) % grad_accumulation == 0) or (batch_idx + 1 == len(train_dataloader)):

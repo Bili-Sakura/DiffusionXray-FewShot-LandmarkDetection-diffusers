@@ -205,7 +205,7 @@ if __name__ == "__main__":
     elif MODEL_NAME == "ddpm":
         BACKBONE_NAME = ""
         model = Unet(
-            dim=SIZE[0],
+            image_size=SIZE[0],
             channels=NUM_CHANNELS,
             dim_mults=[1,2,4,8],
             self_condition=True,

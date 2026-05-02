@@ -8,7 +8,8 @@ from diffusers_xray import build_unet, prepare_model_input
 class Unet(nn.Module):
     def __init__(
         self,
-        dim,
+        dim=None,
+        image_size=None,
         init_dim=None,
         out_dim=None,
         dim_mults=(1, 2, 4, 8),
@@ -17,17 +18,26 @@ class Unet(nn.Module):
         resnet_block_groups=4,
         att_res=32,
         att_heads=4,
+        base_channels=None,
     ):
         super().__init__()
+        if image_size is None:
+            image_size = dim
+        if image_size is None:
+            raise ValueError("image_size must be provided for the diffusers UNet")
+
+        if base_channels is None:
+            base_channels = image_size
+
         self.self_condition = self_condition
         self.unet = build_unet(
-            image_size=dim,
+            image_size=image_size,
             channels=channels,
             channel_mults=dim_mults,
             attention_head_dim=att_res,
             norm_num_groups=resnet_block_groups,
             self_condition=self_condition,
-            base_channels=dim,
+            base_channels=base_channels,
         )
 
     @property
