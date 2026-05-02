@@ -221,7 +221,8 @@ if __name__ == "__main__":
 
             if not os.path.isdir(pretrained_path):
                 raise ValueError(
-                    "DDPM pretrained path must be a diffusers pipeline directory (e.g. .../models/last_model)"
+                    "DDPM pretrained path must be a diffusers pipeline directory containing model_index.json and "
+                    "an unet/ subdirectory (e.g. .../models/last_model)."
                 )
 
             pipeline = XrayDDPMPipeline.from_pretrained(pretrained_path)

@@ -102,7 +102,9 @@ def prepare_model_input(sample: torch.Tensor, self_condition: bool, in_channels:
                 dtype=sample.dtype,
             )
             return torch.cat([zeros, sample], dim=1)
-        raise ValueError(f"Self-conditioned input should have {in_channels - 1} or {in_channels} channels")
+        raise ValueError(
+            f"Self-conditioned input should have {in_channels - 1} or {in_channels} channels, got {sample.shape[1]}"
+        )
 
     if sample.shape[1] != in_channels:
         raise ValueError(f"Input should have {in_channels} channels, got {sample.shape[1]}")
