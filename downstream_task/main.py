@@ -24,6 +24,7 @@ from utilities import *
 from landmarks_datasets import * 
 from model.deep_learning import *
 from model.models import *
+from diffusers_xray import XrayDDPMPipeline
 
 # Set random seed
 random.seed(42)
@@ -204,7 +205,7 @@ if __name__ == "__main__":
     elif MODEL_NAME == "ddpm":
         BACKBONE_NAME = ""
         model = Unet(
-            dim=SIZE[0],
+            image_size=SIZE[0],
             channels=NUM_CHANNELS,
             dim_mults=[1,2,4,8],
             self_condition=True,
@@ -215,11 +216,25 @@ if __name__ == "__main__":
             
         if PRETRAINED == True and config["training_protocol"]["finetuning"]["resume"] == False:
             model_name = f"{MODEL_NAME}/pretrained"            
-            checkpoint = torch.load(config["training_protocol"]["finetuning"]["path"], map_location=device)
-            model.load_state_dict(checkpoint["model_state_dict"])
-            pretrained_epoch = checkpoint.get("epoch", "undefined")
-            #print(f"Loaded model weights from {checkpoint['epoch']} epoch with fid {checkpoint['fid']}")
-            del checkpoint
+            pretrained_path = config["training_protocol"]["finetuning"]["path"]
+            assert os.path.exists(pretrained_path), f"Pretrained model path not found: {pretrained_path}"
+
+            if not os.path.isdir(pretrained_path):
+                raise ValueError(
+                    "DDPM pretrained path must be a diffusers pipeline directory containing model_index.json and "
+                    "an unet/ subdirectory (e.g. .../models/last_model)."
+                )
+
+            pipeline = XrayDDPMPipeline.from_pretrained(pretrained_path)
+            model.unet.load_state_dict(pipeline.unet.state_dict())
+
+            pretrained_epoch = "undefined"
+            training_state_path = os.path.join(pretrained_path, "training_state.pt")
+            if os.path.exists(training_state_path):
+                training_state = torch.load(training_state_path, map_location=device)
+                pretrained_epoch = training_state.get("epoch", "undefined")
+                del training_state
+            del pipeline
             """
             # freeze downsampling layers
             for name, param in model.named_parameters():

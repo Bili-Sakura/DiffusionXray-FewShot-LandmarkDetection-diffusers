@@ -53,6 +53,27 @@ To run the experiments, follow these steps:
   ./launch_experiments.sh
   ```
 
+## Diffusers DDPM checkpoints
+DDPM pretraining now uses a Hugging Face diffusers pipeline and saves checkpoints with `save_pretrained`.
+Use the checkpoint directory (for example, `.../ddpm_pretraining_experiments/<dataset>/.../models/last_model`) as the
+`training_protocol.finetuning.path` when fine-tuning the DDPM backbone in the downstream task.
+
+## Downstream inference with the DDPM pipeline
+Use the diffusers pipeline directly for downstream inference or reconstruction:
+```python
+import torch
+from diffusers_xray import XrayDDPMPipeline
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+pipeline = XrayDDPMPipeline.from_pretrained(".../models/last_model").to(device)
+
+# Replace with preprocessed x-ray tensor in [0, 1], shape [B, C, H, W].
+x_cond = torch.randn(1, 1, 256, 256, device=device)
+
+with torch.no_grad():
+    images = pipeline(x_cond=x_cond, num_inference_steps=500).images
+```
+
 # Download Pre-Trained models
 
 All the pre-trained models used in the study are available at the following link:
