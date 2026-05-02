@@ -1,5 +1,5 @@
 albumentations==1.4.4
-einops==0.8.0
+diffusers==0.30.2
 GPUtil==1.4.0
 matplotlib==3.8.2
 numpy==1.23.5

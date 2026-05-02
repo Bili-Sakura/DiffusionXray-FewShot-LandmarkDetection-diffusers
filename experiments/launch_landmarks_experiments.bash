@@ -83,7 +83,7 @@ else
 fi
 
 # Assert that the path to the pretrained model is valid
-if [ "$PRETRAINED_MODEL_PATH" != "" ] && [ ! -f $PRETRAINED_MODEL_PATH ]; then
+if [ "$PRETRAINED_MODEL_PATH" != "" ] && [ ! -f $PRETRAINED_MODEL_PATH ] && [ ! -d $PRETRAINED_MODEL_PATH ]; then
     echo "Invalid path to the pretrained model."
     exit 1
 fi

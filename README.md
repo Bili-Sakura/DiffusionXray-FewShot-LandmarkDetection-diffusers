@@ -53,6 +53,11 @@ To run the experiments, follow these steps:
   ./launch_experiments.sh
   ```
 
+## Diffusers DDPM checkpoints
+DDPM pretraining now uses a Hugging Face diffusers pipeline and saves checkpoints with `save_pretrained`.
+Use the checkpoint directory (for example, `.../ddpm_pretraining_experiments/<dataset>/.../models/last_model`) as the
+`training_protocol.finetuning.path` when fine-tuning the DDPM backbone in the downstream task.
+
 # Download Pre-Trained models
 
 All the pre-trained models used in the study are available at the following link:
