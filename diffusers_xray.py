@@ -129,6 +129,13 @@ class XrayDDPMPipeline(DiffusionPipeline):
         generator: Optional[torch.Generator] = None,
         return_dict: bool = True,
     ) -> XrayPipelineOutput:
+        """Run sampling for downstream inference or reconstruction.
+
+        Example:
+            >>> pipeline = XrayDDPMPipeline.from_pretrained(".../models/last_model").to("cuda")
+            >>> x_cond = torch.randn(1, 1, 256, 256, device="cuda")
+            >>> images = pipeline(x_cond=x_cond, num_inference_steps=500).images
+        """
         device = self.device
         if x_cond is not None:
             x_cond = x_cond.to(device)
