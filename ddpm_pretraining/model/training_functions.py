@@ -168,7 +168,6 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
 
     try:
         for epoch in tqdm(range(start_epoch, epochs), initial=start_epoch, total=epochs, desc="Epoch"):
-            epoch_loss = 0.0
             torch.cuda.empty_cache()
 
             for batch_idx, data in enumerate(tqdm(train_dataloader, desc="Batch", leave=False)):
@@ -200,7 +199,6 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
                 raw_loss = loss.detach()
                 loss = loss / grad_accumulation
                 loss.backward()
-                epoch_loss += raw_loss.item()
 
                 if ((batch_idx + 1) % grad_accumulation == 0) or (batch_idx + 1 == len(train_dataloader)):
                     torch.nn.utils.clip_grad_value_(pipeline.unet.parameters(), clip_value=1.0)
@@ -338,8 +336,6 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
                     if n_iter % iterations == 0:
                         print(f"Reaching {iterations} iterations. Exiting training...")
                         exit()
-
-            epoch_loss /= len(train_dataloader)
 
     except (KeyboardInterrupt, SystemExit, Exception) as e:
         if isinstance(e, Exception):

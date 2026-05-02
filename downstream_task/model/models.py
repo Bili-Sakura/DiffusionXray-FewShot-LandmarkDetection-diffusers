@@ -25,13 +25,14 @@ class Unet(nn.Module):
         """
         Args:
             image_size: Spatial size of the input images (legacy alias: dim).
-            base_channels: Base channel width used to derive UNet block_out_channels.
+            base_channels: Base channel width used to derive UNet block_out_channels. Defaults to image_size
+                to preserve the original channel scaling used in the legacy UNet implementation.
         """
         super().__init__()
         if image_size is None and dim is None:
             raise ValueError("image_size must be provided for the diffusers UNet")
         if image_size is None:
-            warnings.warn("dim is deprecated; use image_size instead", DeprecationWarning, stacklevel=3)
+            warnings.warn("dim is deprecated; use image_size instead", DeprecationWarning, stacklevel=2)
             image_size = dim
         elif dim is not None and dim != image_size:
             raise ValueError("Provide only one of image_size or dim (legacy alias)")
