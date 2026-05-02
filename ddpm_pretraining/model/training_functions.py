@@ -139,6 +139,13 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
     optimizer = _prepare_optimizer(config["model"]["optimizer"], pipeline.unet.parameters(), config["model"]["lr"])
 
     ema_model = EMAModel(pipeline.unet.parameters(), decay=0.995) if use_ema else None
+    ema_unet = None
+    ema_pipeline = None
+    if use_ema:
+        ema_unet = copy.deepcopy(pipeline.unet).eval().requires_grad_(False).to(device)
+        ema_pipeline = XrayDDPMPipeline(
+            unet=ema_unet, scheduler=pipeline.scheduler, self_condition=pipeline.config.self_condition
+        )
 
     table, total_params = count_parameters(pipeline.unet)
     logging.info(f"Total Trainable Params: {total_params}")
@@ -190,9 +197,10 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
                 else:
                     raise NotImplementedError()
 
+                raw_loss = loss.detach()
                 loss = loss / grad_accumulation
                 loss.backward()
-                epoch_loss += loss.item()
+                epoch_loss += raw_loss.item()
 
                 if ((batch_idx + 1) % grad_accumulation == 0) or (batch_idx + 1 == len(train_dataloader)):
                     torch.nn.utils.clip_grad_value_(pipeline.unet.parameters(), clip_value=1.0)
@@ -205,14 +213,12 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
 
                     n_iter += 1
 
-                    _save_checkpoint(pipeline, epoch, n_iter, loss, save_model_path, name="last_model", optimizer=optimizer)
+                    _save_checkpoint(
+                        pipeline, epoch, n_iter, raw_loss, save_model_path, name="last_model", optimizer=optimizer
+                    )
                     if use_ema:
-                        ema_unet = copy.deepcopy(pipeline.unet).eval().requires_grad_(False).to(device)
                         ema_model.copy_to(ema_unet.parameters())
-                        ema_pipeline = XrayDDPMPipeline(
-                            unet=ema_unet, scheduler=pipeline.scheduler, self_condition=pipeline.config.self_condition
-                        )
-                        _save_checkpoint(ema_pipeline, epoch, n_iter, loss, save_model_path, name="last_ema_model")
+                        _save_checkpoint(ema_pipeline, epoch, n_iter, raw_loss, save_model_path, name="last_ema_model")
 
                 if n_iter % freq_metrics == 0 and batch_idx % grad_accumulation == 0 and n_iter != 0:
                     pipeline.unet.eval()
@@ -222,11 +228,7 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
                     )[0]
 
                     if use_ema:
-                        ema_unet = copy.deepcopy(pipeline.unet).eval().requires_grad_(False).to(device)
                         ema_model.copy_to(ema_unet.parameters())
-                        ema_pipeline = XrayDDPMPipeline(
-                            unet=ema_unet, scheduler=pipeline.scheduler, self_condition=pipeline.config.self_condition
-                        )
                         ema_x_hat = ema_pipeline(
                             batch_size=batch_size, num_inference_steps=timesteps, x_cond=x, return_dict=False
                         )[0]
@@ -258,7 +260,7 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
                     )
 
                     logging.info(
-                        f"\nEpoch/Iteration {epoch}/{n_iter} \t Batch {batch_idx} \t Loss: {loss.item():.6f}"
+                        f"\nEpoch/Iteration {epoch}/{n_iter} \t Batch {batch_idx} \t Loss: {raw_loss.item():.6f}"
                     )
                     logging.info(
                         f"\t\t SSIM: {ssim_metric.item():.4f} \t MSE: {mse_metric.item():.6f} \t FID: {fid_score:.2f} \t Pixel range: [{x_hat_min:.2f}, {x_hat_max:.2f}]"
@@ -266,7 +268,7 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
 
                     message = (
                         f"<b>Epoch/Iteration {epoch}/{n_iter}</b> --> [{x_hat_min:.2f}, {x_hat_max:.2f}] \n"
-                        f"  • <b>Loss:</b> {loss.item():.4f} \n"
+                        f"  • <b>Loss:</b> {raw_loss.item():.4f} \n"
                         f"  • <b>SSIM:</b> {ssim_metric.item():.4f} \n"
                         f"  • <b>MSE:</b> {mse_metric.item():.4f} \n"
                         f"  • <b>FID:</b> {fid_score:.4f}"
@@ -300,7 +302,7 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
 
                         message += (
                             f"\n\n<b>EMA Epoch/Iteration {epoch}/{n_iter}</b> --> [{ema_x_hat_min:.2f}, {ema_x_hat_max:.2f}] \n"
-                            f"  • <b>Loss:</b> {loss.item():.4f} \n"
+                            f"  • <b>Loss:</b> {raw_loss.item():.4f} \n"
                             f"  • <b>SSIM:</b> {ema_ssim_metric.item():.4f} \n"
                             f"  • <b>MSE:</b> {ema_mse_metric.item():.4f} \n"
                             f"  • <b>FID:</b> {ema_fid_score:.4f}"
@@ -317,19 +319,20 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
 
                 if n_iter % freq_checkpoint == 0 and n_iter != 0 and batch_idx % grad_accumulation == 0:
                     print(
-                        f"Saving model checkpoint at epoch {epoch} and iteration {n_iter} with loss: {loss.item():.4f}"
+                        f"Saving model checkpoint at epoch {epoch} and iteration {n_iter} with loss: {raw_loss.item():.4f}"
                     )
                     _save_checkpoint(
-                        pipeline, epoch, n_iter, loss, save_model_path, name=f"model_epoch{epoch}_step{n_iter}"
+                        pipeline, epoch, n_iter, raw_loss, save_model_path, name=f"model_epoch{epoch}_step{n_iter}"
                     )
                     if use_ema:
-                        ema_unet = copy.deepcopy(pipeline.unet).eval().requires_grad_(False).to(device)
                         ema_model.copy_to(ema_unet.parameters())
-                        ema_pipeline = XrayDDPMPipeline(
-                            unet=ema_unet, scheduler=pipeline.scheduler, self_condition=pipeline.config.self_condition
-                        )
                         _save_checkpoint(
-                            ema_pipeline, epoch, n_iter, loss, save_model_path, name=f"ema_model_epoch{epoch}_step{n_iter}"
+                            ema_pipeline,
+                            epoch,
+                            n_iter,
+                            raw_loss,
+                            save_model_path,
+                            name=f"ema_model_epoch{epoch}_step{n_iter}",
                         )
 
                     if n_iter % iterations == 0:
@@ -344,11 +347,7 @@ def train_diffusion_model(config, train_dataloader, save_model_path, root_path, 
         print("\nTraining interrupted. Saving final state...")
         _save_checkpoint(pipeline, epoch, n_iter, loss, save_model_path, name="last_model", optimizer=optimizer)
         if use_ema:
-            ema_unet = copy.deepcopy(pipeline.unet).eval().requires_grad_(False).to(device)
             ema_model.copy_to(ema_unet.parameters())
-            ema_pipeline = XrayDDPMPipeline(
-                unet=ema_unet, scheduler=pipeline.scheduler, self_condition=pipeline.config.self_condition
-            )
             _save_checkpoint(ema_pipeline, epoch, n_iter, loss, save_model_path, name="last_ema_model")
 
     finally:

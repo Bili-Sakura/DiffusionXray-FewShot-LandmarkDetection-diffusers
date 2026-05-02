@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 from torch import nn
 from segmentation_models_pytorch import Unet as smpUnet
@@ -26,10 +28,13 @@ class Unet(nn.Module):
             base_channels: Base channel width used to derive UNet block_out_channels.
         """
         super().__init__()
-        if image_size is None:
-            image_size = dim
-        if image_size is None:
+        if image_size is None and dim is None:
             raise ValueError("image_size must be provided for the diffusers UNet")
+        if image_size is None:
+            warnings.warn("dim is deprecated; use image_size instead", DeprecationWarning)
+            image_size = dim
+        elif dim is not None and dim != image_size:
+            raise ValueError("Provide only one of image_size or dim (legacy alias)")
 
         if base_channels is None:
             base_channels = image_size
@@ -55,6 +60,7 @@ class Unet(nn.Module):
 
     def forward(self, x, time=None):
         if time is None:
+            # Downstream fine-tuning treats the UNet as a deterministic backbone at t=0.
             time = torch.zeros(x.shape[0], device=x.device, dtype=torch.long)
         model_input = prepare_model_input(x, self.self_condition, self.unet.config.in_channels)
         return self.unet(model_input, time).sample
